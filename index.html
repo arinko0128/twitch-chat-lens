@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#100d18">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Twitch Chat Lens">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>Twitch Chat Lens</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #100d18;
+      --panel: #191522;
+      --panel-2: #211b2d;
+      --line: #332a42;
+      --text: #f8f5ff;
+      --muted: #a79db8;
+      --purple: #a970ff;
+      --purple-2: #7d43d6;
+      --green: #48e0a4;
+      --red: #ff687d;
+      --chat-font: 19px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { overscroll-behavior: none; }
+    button, input { font: inherit; }
+    button { cursor: pointer; touch-action: manipulation; }
+    .app { display: flex; flex-direction: column; height: 100dvh; max-width: 760px; margin: 0 auto; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); background: radial-gradient(100% 35% at 50% 0%, #2d1b48 0%, var(--bg) 100%); }
+    .topbar { display: flex; align-items: center; gap: 11px; padding: 13px 16px 12px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+    .brand-mark { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; background: linear-gradient(145deg, #b47cff, #6d38bd); font-size: 20px; font-weight: 900; box-shadow: 0 5px 18px #7d43d644; }
+    .brand { flex: 1; min-width: 0; }
+    .brand h1 { margin: 0; font-size: 15px; font-weight: 850; letter-spacing: .045em; }
+    .brand p { margin: 3px 0 0; color: var(--muted); font-size: 10px; letter-spacing: .16em; }
+    .icon-button { width: 42px; height: 42px; border: 1px solid var(--line); border-radius: 13px; background: #20192b; color: var(--text); font-size: 19px; }
+    .channelbar { display: flex; align-items: center; gap: 10px; padding: 14px 16px; flex-shrink: 0; }
+    .live-dot { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: #8c8499; box-shadow: 0 0 0 4px #ffffff0a; }
+    .live-dot.live { background: var(--green); box-shadow: 0 0 0 4px #48e0a41c; }
+    .channel-info { flex: 1; min-width: 0; }
+    .channel-name { font-size: 19px; font-weight: 850; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .status-text { margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .status-pill { max-width: 125px; border: 1px solid var(--line); padding: 6px 9px; border-radius: 999px; font-size: 10px; font-weight: 800; color: #d9c9f8; background: #a970ff13; white-space: nowrap; }
+    .status-pill.live { color: #91f2cd; border-color: #48e0a444; background: #48e0a411; }
+    .chat { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 12px 18px; scrollbar-width: thin; scrollbar-color: #4d3c63 transparent; }
+    .chat::-webkit-scrollbar { width: 5px; }
+    .chat::-webkit-scrollbar-thumb { background: #4d3c63; border-radius: 99px; }
+    .message { display: flex; gap: 10px; align-items: flex-start; margin: 5px 0; padding: 11px 10px; border: 1px solid transparent; border-radius: 15px; background: #ffffff06; animation: pop .2s ease-out; overflow-wrap: anywhere; }
+    .message:nth-child(even) { background: #ffffff09; }
+    .avatar { flex: 0 0 auto; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; background: linear-gradient(145deg, #3f3157, #292238); color: #e9d8ff; font-size: 14px; font-weight: 900; }
+    .message-content { flex: 1; min-width: 0; }
+    .message-head { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; margin-bottom: 4px; }
+    .username { font-size: 13px; line-height: 1.25; font-weight: 850; }
+    .badge { display: inline-block; padding: 2px 5px; border-radius: 5px; color: #e8dbff; background: #8c57d82e; font-size: 9px; font-weight: 850; letter-spacing: .03em; }
+    .time { margin-left: auto; color: #81778f; font-size: 10px; font-variant-numeric: tabular-nums; }
+    .message-text { font-size: var(--chat-font); line-height: 1.36; letter-spacing: .005em; white-space: pre-wrap; word-break: break-word; }
+    .message-text img.emote { height: 1.65em; max-width: 5em; vertical-align: middle; object-fit: contain; }
+    .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 220px; text-align: center; padding: 24px; color: var(--muted); }
+    .empty-icon { display: grid; place-items: center; width: 70px; height: 70px; border: 1px solid #a970ff44; border-radius: 23px; background: #a970ff12; font-size: 30px; margin-bottom: 15px; }
+    .empty strong { color: var(--text); font-size: 17px; }
+    .empty p { font-size: 13px; line-height: 1.65; max-width: 300px; }
+    .toolbar { display: flex; align-items: center; gap: 8px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: #15111eeb; border-top: 1px solid var(--line); flex-shrink: 0; backdrop-filter: blur(14px); }
+    .tool-button { height: 42px; min-width: 44px; padding: 0 13px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--text); font-weight: 750; }
+    .tool-button.active { border-color: #a970ff91; background: #a970ff21; color: #d9baff; }
+    .tool-spacer { flex: 1; }
+    .count { color: var(--muted); font-size: 11px; white-space: nowrap; padding: 0 4px; }
+    .settings-overlay { position: fixed; inset: 0; display: none; align-items: flex-end; justify-content: center; background: #05030ac9; z-index: 10; padding-top: env(safe-area-inset-top); }
+    .settings-overlay.open { display: flex; }
+    .settings-panel { width: 100%; max-width: 760px; max-height: 90dvh; overflow-y: auto; padding: 9px 18px calc(20px + env(safe-area-inset-bottom)); border: 1px solid var(--line); border-bottom: 0; border-radius: 24px 24px 0 0; background: #181321; box-shadow: 0 -12px 60px #0008; }
+    .sheet-handle { width: 42px; height: 4px; border-radius: 9px; background: #584b69; margin: 2px auto 17px; }
+    .sheet-header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+    .sheet-header h2 { margin: 0; font-size: 20px; flex: 1; }
+    .close-button { width: 38px; height: 38px; border: 0; border-radius: 12px; background: var(--panel-2); color: var(--text); font-size: 20px; }
+    .field { display: block; margin: 15px 0; }
+    .field span { display: block; margin-bottom: 7px; color: #e9e1f5; font-size: 13px; font-weight: 800; }
+    .field input { width: 100%; height: 48px; padding: 0 13px; outline: none; border: 1px solid #473a5b; border-radius: 12px; background: #100d18; color: var(--text); }
+    .field input:focus { border-color: var(--purple); box-shadow: 0 0 0 3px #a970ff20; }
+    .help { margin: 7px 1px 0; color: var(--muted); font-size: 11px; line-height: 1.65; overflow-wrap: anywhere; }
+    .primary { width: 100%; min-height: 49px; border: 0; border-radius: 13px; background: linear-gradient(100deg, #ac75ff, #8250d4); color: white; font-weight: 900; box-shadow: 0 6px 22px #7d43d633; }
+    .secondary { width: 100%; min-height: 45px; margin-top: 9px; border: 1px solid var(--line); border-radius: 13px; background: #211b2d; color: var(--text); font-weight: 800; }
+    .notice { margin: 13px 0; padding: 12px; border: 1px solid #a970ff33; border-radius: 12px; background: #a970ff0d; color: #cfc0e5; font-size: 11px; line-height: 1.7; }
+    .danger { color: #ff9dac; }
+    .toast { position: fixed; left: 16px; right: 16px; bottom: calc(75px + env(safe-area-inset-bottom)); z-index: 20; max-width: 650px; margin: 0 auto; padding: 12px 15px; border: 1px solid #625174; border-radius: 13px; background: #281f35; color: var(--text); font-size: 12px; line-height: 1.5; box-shadow: 0 10px 30px #0006; display: none; }
+    @keyframes pop { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    @media (min-width: 600px) { .app { height: min(100dvh, 1100px); border-inline: 1px solid var(--line); } .settings-overlay { align-items: center; padding: 16px; } .settings-panel { border-bottom: 1px solid var(--line); border-radius: 24px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand-mark">T</div>
+      <div class="brand"><h1>CHAT LENS</h1><p>VERTICAL TWITCH CHAT</p></div>
+      <button class="icon-button" id="settings-open" aria-label="設定を開く" title="設定">⚙</button>
+    </header>
+    <section class="channelbar">
+      <div class="live-dot" id="live-dot"></div>
+      <div class="channel-info">
+        <div class="channel-name" id="channel-title">チャンネル未設定</div>
+        <div class="status-text" id="status-text">設定からTwitchに接続してください</div>
+      </div>
+      <div class="status-pill" id="status-pill">未接続</div>
+    </section>
+    <section class="chat" id="chat" aria-live="polite" aria-label="配信コメント">
+      <div class="empty" id="empty-state">
+        <div class="empty-icon">✦</div>
+        <strong>チャットを待っています</strong>
+        <p>設定からチャンネル名とTwitch Client IDを入力して接続します。先にプレビューを試すこともできます。</p>
+        <button class="tool-button active" id="preview-start">プレビューを表示</button>
+      </div>
+    </section>
+    <footer class="toolbar">
+      <button class="tool-button" id="font-down" aria-label="文字を小さく">A−</button>
+      <button class="tool-button" id="font-up" aria-label="文字を大きく">A＋</button>
+      <button class="tool-button active" id="autoscroll" aria-pressed="true">↓ 自動</button>
+      <div class="tool-spacer"></div>
+      <span class="count" id="message-count">0 件</span>
+      <button class="tool-button" id="clear-chat">消去</button>
+    </footer>
+  </main>
+
+  <div class="settings-overlay" id="settings-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <section class="settings-panel">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header"><h2 id="settings-title">接続設定</h2><button class="close-button" id="settings-close" aria-label="閉じる">×</button></div>
+      <label class="field"><span>Twitchチャンネル名</span><input id="channel-input" type="text" placeholder="例：twitchdev" autocomplete="off" autocapitalize="none" spellcheck="false"><p class="help">配信URLの twitch.tv/ の後ろの名前を入力します。@は不要です。</p></label>
+      <label class="field"><span>Twitch Client ID</span><input id="client-id-input" type="text" placeholder="登録したアプリのClient ID" autocomplete="off" autocapitalize="none" spellcheck="false"><p class="help">Twitch Developer Consoleで作成したアプリのClient IDです。Client Secretは入力しないでください。</p></label>
+      <div class="notice">
+        <strong>初回設定が必要です</strong><br>
+        このページをHTTPSで公開し、TwitchアプリのOAuth Redirect URLに次のURLを登録してください：<br>
+        <code id="redirect-uri"></code><br>
+        OAuth Redirect URLはこのページのURLと完全一致させます。必要な権限はチャット読取用の <code>user:read:chat</code> だけです。
+      </div>
+      <button class="primary" id="connect-button">Twitchに接続</button>
+      <button class="secondary" id="preview-button">プレビュー表示（接続なし）</button>
+      <button class="secondary" id="disconnect-button">切断する</button>
+      <p class="help">この試作版はコメント閲覧専用です。コメント投稿やモデレーション操作は行いません。認証トークンはブラウザのURLから読み取った後、画面のURLから除去し、ローカルストレージには保存しません。</p>
+    </section>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const state = {
+    clientId: '', channel: '', token: '', userId: '', ws: null,
+    reconnectTimer: null, reconnectDelay: 1800, manualDisconnect: false,
+    autoScroll: true, fontSize: 19, count: 0, demoTimer: null, isDemo: false,
+    lastSessionId: null
+  };
+  const SAMPLE = [
+    { name: 'purple_fox', color: '#C8A4FF', text: 'こんばんは！今日も楽しみ！', tags: ['SUB'] },
+    { name: 'natsu_games', color: '#FFB6A3', text: 'ナイスプレイ！！', tags: [] },
+    { name: 'mikan_88', color: '#7EDFD0', text: 'このシーン好き', tags: ['VIP'] },
+    { name: 'koala_stream', color: '#F2D16B', text: 'GG 🙌', tags: [] },
+    { name: 'chat_reader', color: '#A8C6FF', text: '音も映像もいい感じです', tags: ['MOD'] },
+    { name: 'sora_live', color: '#F5A9E6', text: 'わあああ！', tags: [] }
+  ];
+
+  function setStatus(text, pill = '未接続', live = false) {
+    $('status-text').textContent = text;
+    $('status-pill').textContent = pill;
+    $('status-pill').classList.toggle('live', live);
+    $('live-dot').classList.toggle('live', live);
+  }
+  function toast(message, duration = 4500) {
+    const node = $('toast'); node.textContent = message; node.style.display = 'block';
+    window.clearTimeout(toast.timer); toast.timer = window.setTimeout(() => node.style.display = 'none', duration);
+  }
+  function settingsOpen() { $('settings-overlay').classList.add('open'); }
+  function settingsClose() { $('settings-overlay').classList.remove('open'); }
+  function safeColor(value) { return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value) ? value : '#D7B9FF'; }
+  function clearDemo() { if (state.demoTimer) window.clearInterval(state.demoTimer); state.demoTimer = null; }
+  function closeSocket() {
+    clearTimeout(state.reconnectTimer); state.reconnectTimer = null;
+    if (state.ws) { const old = state.ws; state.ws = null; try { old.close(1000, 'User disconnect'); } catch (_) {} }
+  }
+  function clearMessages() {
+    $('chat').replaceChildren(); state.count = 0; $('message-count').textContent = '0 件';
+  }
+  function updateCount() { $('message-count').textContent = `${state.count} 件`; }
+  function scrollIfNeeded() { if (state.autoScroll) $('chat').scrollTop = $('chat').scrollHeight; }
+
+  function addMessage({name = 'viewer', color = '#D7B9FF', text = '', badges = [], fragments = null, time = new Date(), demo = false}) {
+    $('empty-state')?.remove();
+    const row = document.createElement('article'); row.className = 'message';
+    const avatar = document.createElement('div'); avatar.className = 'avatar'; avatar.textContent = (name.trim()[0] || '?').toUpperCase(); avatar.style.color = safeColor(color);
+    const content = document.createElement('div'); content.className = 'message-content';
+    const head = document.createElement('div'); head.className = 'message-head';
+    const user = document.createElement('span'); user.className = 'username'; user.textContent = name; user.style.color = safeColor(color);
+    head.append(user);
+    for (const label of badges.slice(0, 3)) {
+      const badge = document.createElement('span'); badge.className = 'badge'; badge.textContent = label; head.append(badge);
+    }
+    const timeNode = document.createElement('span'); timeNode.className = 'time';
+    timeNode.textContent = time.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}); head.append(timeNode);
+    const body = document.createElement('div'); body.className = 'message-text';
+    if (fragments && fragments.length) {
+      for (const f of fragments) {
+        if (f.type === 'emote' && f.emote && f.emote.id) {
+          const img = document.createElement('img'); img.className = 'emote'; img.alt = f.text || 'emote'; img.loading = 'lazy';
+          img.src = `https://static-cdn.jtvnw.net/emoticons/v2/${encodeURIComponent(f.emote.id)}/default/dark/1.0`;
+          img.onerror = () => { const fallback = document.createTextNode(f.text || ''); img.replaceWith(fallback); };
+          body.append(img);
+        } else {
+          body.append(document.createTextNode(f.text || ''));
+        }
+      }
+    } else body.textContent = text;
+    content.append(head, body); row.append(avatar, content); $('chat').append(row);
+    state.count++;
+    // Keep the page responsive during busy streams.
+    while ($('chat').children.length > 300) $('chat').firstElementChild.remove();
+    updateCount(); scrollIfNeeded();
+  }
+
+  function startPreview() {
+    disconnect(false); clearDemo(); clearMessages(); state.isDemo = true;
+    $('channel-title').textContent = state.channel ? `#${state.channel}` : 'チャットのプレビュー';
+    setStatus('サンプルコメントを表示中です', 'プレビュー', false);
+    SAMPLE.forEach((m, i) => addMessage({ ...m, time: new Date(Date.now() - (SAMPLE.length - i) * 60000), demo: true }));
+    let index = 0;
+    state.demoTimer = window.setInterval(() => {
+      if (!state.isDemo) return;
+      const sample = SAMPLE[index++ % SAMPLE.length];
+      addMessage({ ...sample, time: new Date() });
+    }, 5200);
+    settingsClose();
+  }
+
+  function disconnect(showToast = true) {
+    state.manualDisconnect = true; state.isDemo = false; clearDemo(); closeSocket();
+    state.token = ''; state.userId = ''; state.lastSessionId = null;
+    if (showToast) { setStatus('切断しました', '未接続', false); toast('Twitchから切断しました。'); }
+  }
+
+  function randState() {
+    const bytes = new Uint8Array(24); crypto.getRandomValues(bytes);
+    return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  }
+  function redirectUri() { return window.location.origin + window.location.pathname; }
+  function saveSettings() {
+    state.clientId = $('client-id-input').value.trim();
+    state.channel = $('channel-input').value.trim().replace(/^@/, '').toLowerCase();
+    try { localStorage.setItem('tcl_client_id', state.clientId); localStorage.setItem('tcl_channel', state.channel); } catch (_) {}
+    $('channel-title').textContent = state.channel ? `#${state.channel}` : 'チャンネル未設定';
+    $('redirect-uri').textContent = redirectUri();
+  }
+  function validInputs() {
+    saveSettings();
+    if (!state.channel || !/^[a-zA-Z0-9_]{1,25}$/.test(state.channel)) {
+      toast('チャンネル名を確認してください（英数字と_）。'); return false;
+    }
+    if (!state.clientId || !/^[a-zA-Z0-9]+$/.test(state.clientId)) {
+      toast('Twitch Client IDを入力してください。'); return false;
+    }
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+      toast('実コメント接続にはHTTPSで公開したページが必要です。'); return false;
+    }
+    return true;
+  }
+  function beginOAuth() {
+    if (!validInputs()) return;
+    if (!window.crypto || !crypto.getRandomValues) { toast('このブラウザでは安全な認証を開始できません。'); return; }
+    const oauthState = randState();
+    try { sessionStorage.setItem('tcl_oauth_state', oauthState); } catch (_) {}
+    const url = new URL('https://id.twitch.tv/oauth2/authorize');
+    url.searchParams.set('response_type', 'token');
+    url.searchParams.set('client_id', state.clientId);
+    url.searchParams.set('redirect_uri', redirectUri());
+    url.searchParams.set('scope', 'user:read:chat');
+    url.searchParams.set('state', oauthState);
+    window.location.assign(url.toString());
+  }
+
+  async function fetchJson(url, options = {}) {
+    const response = await fetch(url, options);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const detail = data.message || data.error || `HTTP ${response.status}`;
+      throw new Error(detail);
+    }
+    return data;
+  }
+
+  async function handleOAuthReturn() {
+    if (!location.hash.includes('access_token=') && !location.hash.includes('error=')) return false;
+    const params = new URLSearchParams(location.hash.slice(1));
+    const accessToken = params.get('access_token');
+    const incomingState = params.get('state');
+    const error = params.get('error');
+    const expectedState = (() => { try { return sessionStorage.getItem('tcl_oauth_state'); } catch (_) { return null; } })();
+    history.replaceState(null, document.title, location.pathname + location.search);
+    try { sessionStorage.removeItem('tcl_oauth_state'); } catch (_) {}
+    if (error) { setStatus('Twitch認証がキャンセルされました', '未接続', false); toast('認証が許可されませんでした。'); return true; }
+    if (!accessToken || !expectedState || incomingState !== expectedState) {
+      setStatus('認証情報を確認できません', '認証エラー', false); toast('認証stateが一致しません。設定からもう一度接続してください。', 6500); return true;
+    }
+    saveSettings();
+    if (!state.clientId || !state.channel) { toast('接続設定が不足しています。設定を開いて確認してください。'); return true; }
+    state.token = accessToken; state.manualDisconnect = false; state.isDemo = false;
+    clearDemo(); closeSocket(); clearMessages();
+    setStatus('Twitchアカウントを確認中…', '認証中', false);
+    try {
+      const me = await fetchJson('https://api.twitch.tv/helix/users', { headers: { 'Client-Id': state.clientId, 'Authorization': `Bearer ${state.token}` } });
+      if (!me.data || !me.data[0]) throw new Error('Twitchユーザーを確認できませんでした');
+      state.userId = me.data[0].id;
+      await connectChannel();
+    } catch (e) {
+      state.token = ''; setStatus('接続に失敗しました', 'エラー', false);
+      toast(`接続エラー：${e.message}。Client ID、Redirect URL、認証権限を確認してください。`, 8000);
+    }
+    return true;
+  }
+
+  async function connectChannel() {
+    setStatus(`#${state.channel} のチャンネルを確認中…`, '接続中', false);
+    const channelResult = await fetchJson(`https://api.twitch.tv/helix/users?login=${encodeURIComponent(state.channel)}`, { headers: { 'Client-Id': state.clientId, 'Authorization': `Bearer ${state.token}` } });
+    if (!channelResult.data || !channelResult.data[0]) throw new Error('チャンネルが見つかりません。名前を確認してください');
+    const broadcasterId = channelResult.data[0].id;
+    $('channel-title').textContent = `#${channelResult.data[0].login}`;
+    openEventSub('wss://eventsub.wss.twitch.tv/ws', false, broadcasterId);
+  }
+
+  function openEventSub(url, isMigration, broadcasterId = null) {
+    clearTimeout(state.reconnectTimer);
+    let ws;
+    try { ws = new WebSocket(url); } catch (e) { scheduleReconnect(); throw e; }
+    state.ws = ws;
+    ws.addEventListener('open', () => { state.reconnectDelay = 1800; });
+    ws.addEventListener('message', async (event) => {
+      if (state.ws !== ws) return;
+      let packet;
+      try { packet = JSON.parse(event.data); } catch (_) { return; }
+      const type = packet.metadata && packet.metadata.message_type;
+      if (type === 'session_welcome') {
+        const sessionId = packet.payload?.session?.id;
+        state.lastSessionId = sessionId;
+        if (isMigration) {
+          setStatus(`#${state.channel} のコメントを受信中`, 'LIVE CHAT', true);
+          return;
+        }
+        try {
+          setStatus('チャット購読を設定中…', '接続中', false);
+          await fetchJson('https://api.twitch.tv/helix/eventsub/subscriptions', {
+            method: 'POST',
+            headers: { 'Client-Id': state.clientId, 'Authorization': `Bearer ${state.token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'channel.chat.message', version: '1', condition: { broadcaster_user_id: broadcasterId, user_id: state.userId }, transport: { method: 'websocket', session_id: sessionId } })
+          });
+          setStatus(`#${state.channel} のコメントを受信中`, 'LIVE CHAT', true);
+          toast('Twitchチャットに接続しました。');
+        } catch (e) {
+          setStatus('購読の設定に失敗しました', 'エラー', false);
+          toast(`チャット購読エラー：${e.message}`, 8500);
+          try { ws.close(); } catch (_) {}
+        }
+      } else if (type === 'notification') {
+        const subscription = packet.payload?.subscription;
+        const evt = packet.payload?.event;
+        if (subscription?.type !== 'channel.chat.message' || !evt) return;
+        const badgeNames = (evt.badges || []).map(b => ({moderator: 'MOD', broadcaster: '配信者', vip: 'VIP', subscriber: 'SUB'}[b.set_id])).filter(Boolean);
+        addMessage({ name: evt.chatter_user_name || evt.chatter_user_login || 'viewer', color: safeColor(evt.color), text: evt.message?.text || '', fragments: evt.message?.fragments || null, badges: badgeNames, time: new Date() });
+      } else if (type === 'session_reconnect') {
+        const reconnectUrl = packet.payload?.session?.reconnect_url;
+        if (reconnectUrl) openEventSub(reconnectUrl, true);
+      } else if (type === 'revocation') {
+        setStatus('チャット購読が解除されました', '切断', false);
+        toast('Twitchの購読が解除されました。設定から再接続してください。');
+      }
+    });
+    ws.addEventListener('error', () => { /* close event handles retry */ });
+    ws.addEventListener('close', () => {
+      if (state.ws !== ws || state.manualDisconnect) return;
+      state.ws = null;
+      setStatus('再接続しています…', '再接続', false);
+      scheduleReconnect();
+    });
+  }
+
+  function scheduleReconnect() {
+    if (state.manualDisconnect || !state.token || !state.clientId || !state.channel) return;
+    clearTimeout(state.reconnectTimer);
+    const delay = state.reconnectDelay;
+    state.reconnectTimer = window.setTimeout(async () => {
+      state.reconnectDelay = Math.min(state.reconnectDelay * 1.7, 20000);
+      try {
+        const channelResult = await fetchJson(`https://api.twitch.tv/helix/users?login=${encodeURIComponent(state.channel)}`, { headers: { 'Client-Id': state.clientId, 'Authorization': `Bearer ${state.token}` } });
+        if (!channelResult.data?.[0]) throw new Error('channel not found');
+        openEventSub('wss://eventsub.wss.twitch.tv/ws', false, channelResult.data[0].id);
+      } catch (_) { scheduleReconnect(); }
+    }, delay);
+  }
+
+  $('settings-open').addEventListener('click', settingsOpen);
+  $('settings-close').addEventListener('click', settingsClose);
+  $('settings-overlay').addEventListener('click', (e) => { if (e.target === $('settings-overlay')) settingsClose(); });
+  $('connect-button').addEventListener('click', beginOAuth);
+  $('preview-button').addEventListener('click', () => { saveSettings(); startPreview(); });
+  $('preview-start').addEventListener('click', () => { saveSettings(); startPreview(); });
+  $('disconnect-button').addEventListener('click', () => { disconnect(); clearMessages(); setStatus('設定からTwitchに接続してください', '未接続', false); settingsClose(); });
+  $('clear-chat').addEventListener('click', () => { clearMessages(); toast('画面のコメントを消去しました。'); });
+  $('autoscroll').addEventListener('click', () => { state.autoScroll = !state.autoScroll; $('autoscroll').classList.toggle('active', state.autoScroll); $('autoscroll').setAttribute('aria-pressed', String(state.autoScroll)); $('autoscroll').textContent = state.autoScroll ? '↓ 自動' : '↓ 手動'; if (state.autoScroll) scrollIfNeeded(); });
+  $('font-down').addEventListener('click', () => { state.fontSize = Math.max(13, state.fontSize - 2); document.documentElement.style.setProperty('--chat-font', `${state.fontSize}px`); });
+  $('font-up').addEventListener('click', () => { state.fontSize = Math.min(30, state.fontSize + 2); document.documentElement.style.setProperty('--chat-font', `${state.fontSize}px`); });
+  $('channel-input').addEventListener('change', saveSettings);
+  $('client-id-input').addEventListener('change', saveSettings);
+
+  try {
+    state.clientId = localStorage.getItem('tcl_client_id') || '';
+    state.channel = localStorage.getItem('tcl_channel') || '';
+  } catch (_) {}
+  $('client-id-input').value = state.clientId;
+  $('channel-input').value = state.channel;
+  $('redirect-uri').textContent = redirectUri();
+  $('channel-title').textContent = state.channel ? `#${state.channel}` : 'チャンネル未設定';
+
+  handleOAuthReturn().then((handled) => {
+    if (!handled) {
+      if (!state.channel || !state.clientId) settingsOpen();
+    }
+  }).catch((e) => toast(`認証処理エラー：${e.message}`, 8000));
+
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js').catch(() => {}));
+  }
+})();
+</script>
+</body>
+</html>
